@@ -155,43 +155,48 @@ Reset the in-memory dummy data before testing:
 
 ```text
 POST /requests/demo/reset
+
 ```
+![Reset](/figures/postman_test_1_reset.png)
 
 View a request:
 
 ```text
 GET /requests/REQ-1001
 ```
-
+![View Status](/figures/postman_test_2_view_status.png)
 Approved path using `REQ-1001`:
 
 ```text
 PATCH /requests/REQ-1001/status
 ```
 
-Send these statuses one at a time:
+The first one is Assigned. The below postman shows the status changed to assigned after being submitted.
 
-- Assigned
-- In Progress
-- Waiting for Approval
-- Approved
-- Resolved
-- Closed
 
-Rejected path using `REQ-1002`:
+![Change Status](/figures/test_3_change_status.png)
+
+The second try is in progress. The below picture shows status changed to In Progress , and also showing the request history of the status.
+
+![Change Status](/figures/test_4_change_status.png)
+
+
+The below figure shows the request being rejected with the full path using `REQ-1002` in postman:
+Knowing the current status of the request is "assigned", we will implent these:
 
 ```text
 PATCH /requests/REQ-1002/status
 ```
-
-Send these statuses one at a time:
 
 - In Progress
 - Waiting for Approval
 - Rejected
 - Closed
 
+![Rejected Request Path](/figures/request_rejection_path.png)
+
 Invalid transition example:
+It will be applied for REQ-1003 which has a status 'Closed'
 
 ```text
 PATCH /requests/REQ-1003/status
@@ -206,6 +211,16 @@ Expected result:
 ```text
 400 Bad Request
 ```
+
+![Invalid Status Change](/figures/invalid_state_change.png)
+
+Another one is:
+
+![Invalid Status Change](/figures/invalid_2.png)
+
+Wrong Status chnage:
+
+![Invalid Status Change](/figures/invalid_3.png)
 
 Expected result:
 
