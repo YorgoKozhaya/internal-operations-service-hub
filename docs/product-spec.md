@@ -73,6 +73,7 @@ The idea of this system is to have one place where employees can submit their re
 
 - The system is only for internal company use.
 - Only employees of the company can use it.
+- Week 4 also uses an AI service on the internet as an external dependency. The employee can describe what they need in their own words, and the service suggests a category or a status. The request is saved only when the employee submits it.
 
 
 

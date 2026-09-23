@@ -33,6 +33,8 @@ The users themselves are outside the system.
 
 Since this is an internal company system, the core system does not depend on a third-party service. However, an email notification provider can be used as an external dependency if email notifications are needed.
 
+Week 4 also uses an AI service on the internet as an external dependency. The employee types what they need in their own words. That service suggests a category, or the status of a request they are allowed to see. The backend checks the suggestion before the screen shows it.
+
 ## 2. Structure and Flow
 
 The system is divided into a few main parts.
@@ -61,6 +63,8 @@ The main system can work without any external dependency.
 The only optional external dependency in this design is the email notification provider.
 
 If the email service is unavailable, requests should still be created, updated, approved, and resolved normally.
+
+Week 4 adds another external dependency: an AI service. The page does not talk to it. The backend does. If that service is down, Suggest stops, but the employee can still submit a request, open one, and change a status by hand.
 
 ### Important Data Flow
 
@@ -100,6 +104,7 @@ The system should check the user's permissions before allowing important actions
 
 - If a request cannot be saved, the user should see a message that the submission failed.
 - If the email notification provider is not working, the request should still be processed normally.
+- If the AI service is not working, Suggest cannot finish, but the employee can still submit a request and update a status by hand.
 - If the needed data is not found in the cache, the system should get it from the database.
 - If the cache is unavailable, the system should still be able to use the database.
 - If a user tries to do something they are not allowed to do, the system should deny the action.
@@ -148,3 +153,6 @@ The system should check the user's permissions before allowing important actions
 
 - Keep email notifications optional:
   The main system should still work even if the external email service is unavailable.
+
+- Use an external AI service for suggestions:
+  The employee can describe a need in their own words. If that service is unavailable, the rest of the hub still works.

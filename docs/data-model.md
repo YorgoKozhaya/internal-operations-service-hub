@@ -119,6 +119,8 @@ Frequently accessed data can be stored temporarily in the cache to reduce repeat
 
 The database remains the main source of truth.
 
+Week 4 also uses an AI service as an external dependency. That service is not stored in the database. The suggestion it returns is not a saved record. A request is stored only when the employee submits it.
+
 ## 4. Access Patterns
 
 The data model should support the main actions users perform in the system.
