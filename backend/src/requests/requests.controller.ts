@@ -1,15 +1,29 @@
 import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { CreateRequestInput } from './create-request.input';
+import { IntakeResult } from './intake-rules';
+import { IntakeService } from './intake.service';
 import { RequestRecord } from './request-record';
 import { RequestsService } from './requests.service';
 
 @Controller('requests')
 export class RequestsController {
-  constructor(private readonly requestsService: RequestsService) {}
+  constructor(
+    private readonly requestsService: RequestsService,
+    private readonly intakeService: IntakeService,
+  ) {}
 
   @Post('demo/reset')
   resetDemoData(): Promise<RequestRecord[]> {
     return this.requestsService.resetDemoData();
+  }
+
+  @Post('intake')
+  @HttpCode(HttpStatus.OK)
+  intake(
+    @Headers('x-user-id') userId: string,
+    @Body('text') text: string,
+  ): Promise<IntakeResult> {
+    return this.intakeService.interpret(userId, text);
   }
 
   @Post()

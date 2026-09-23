@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "prisma:push": "prisma db push",
     "prisma:seed": "prisma db seed",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "eval:intake": "ts-node -r reflect-metadata src/intake-eval-main.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

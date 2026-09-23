@@ -106,6 +106,23 @@ button:disabled {
   color: #8a1f11;
 }
 
+.intake {
+  margin-bottom: 16px;
+}
+
+.suggestion {
+  margin-top: 14px;
+  padding: 12px;
+  background: #f4f8f9;
+  border-radius: 8px;
+}
+
+.suggestion p,
+[data-testid='intake-answer'] {
+  margin: 0 0 8px;
+  white-space: pre-line;
+}
+
 .result {
   margin-top: 16px;
 }

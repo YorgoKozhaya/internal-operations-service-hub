@@ -26,10 +26,24 @@ type ApiError = {
   statusCode?: number;
 };
 
+type IntakeResult = {
+  requestType: 'new_request' | 'status_question';
+  categoryId: string | null;
+  categoryName: string | null;
+  title: string | null;
+  needsApproval: boolean;
+  needsClarification: boolean;
+  clarification: string | null;
+  guidance: string | null;
+  requestId: string | null;
+  status: string | null;
+  answer: string | null;
+};
+
 const CATEGORIES = [
-  { id: 'CAT-IT-1', name: 'IT Hardware' },
-  { id: 'CAT-HR-1', name: 'Employment Letter' },
-  { id: 'CAT-FIN-1', name: 'Work Expense' },
+  { id: 'CAT-IT-1', name: 'IT' },
+  { id: 'CAT-HR-1', name: 'HR' },
+  { id: 'CAT-FIN-1', name: 'Finance' },
 ];
 
 const USERS = [
@@ -67,6 +81,8 @@ export default function App() {
   const [categoryId, setCategoryId] = useState('CAT-IT-1');
   const [lookupId, setLookupId] = useState('REQ-1001');
   const [nextStatus, setNextStatus] = useState('Assigned');
+  const [intakeText, setIntakeText] = useState('');
+  const [intake, setIntake] = useState<IntakeResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [request, setRequest] = useState<ServiceRequest | null>(null);
@@ -76,6 +92,50 @@ export default function App() {
     !!request &&
     DEPARTMENT_STAFF[userId] === request.departmentId &&
     nextStatuses.length > 0;
+
+  async function suggestIntake(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    setIntake(null);
+
+    try {
+      const response = await fetch(`${API_URL}/requests/intake`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId,
+        },
+        body: JSON.stringify({ text: intakeText }),
+      });
+
+      if (!response.ok) {
+        setError(await readApiError(response));
+        return;
+      }
+
+      setIntake((await response.json()) as IntakeResult);
+    } catch {
+      setError('Could not reach the API. Start the backend on port 3000.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function useSuggestion() {
+    if (!intake || intake.requestType !== 'new_request' || intake.needsClarification) {
+      return;
+    }
+
+    if (intake.title) {
+      setTitle(intake.title);
+    }
+
+    setDescription(intakeText);
+    if (intake.categoryId) {
+      setCategoryId(intake.categoryId);
+    }
+  }
 
   async function submitRequest(event: FormEvent) {
     event.preventDefault();
@@ -195,6 +255,55 @@ export default function App() {
           ))}
         </select>
       </label>
+
+      <section className="card intake">
+        <h2>Describe it in your own words</h2>
+        <p className="hint">
+          The assistant suggests a category or the status of a request you can see. It does not save anything.
+        </p>
+        <form onSubmit={suggestIntake}>
+          <label className="field">
+            What do you need?
+            <textarea
+              value={intakeText}
+              onChange={(event) => setIntakeText(event.target.value)}
+              placeholder="My laptop keyboard stopped working."
+              rows={3}
+            />
+          </label>
+          <button type="submit" disabled={busy}>
+            Suggest
+          </button>
+        </form>
+
+        {intake ? (
+          <div className="suggestion" data-testid="intake-result">
+            {intake.needsClarification ? (
+              <p>{intake.clarification}</p>
+            ) : intake.requestType === 'status_question' ? (
+              <p data-testid="intake-answer">{intake.answer}</p>
+            ) : (
+              <>
+                <p>
+                  Suggested title: <strong>{intake.title}</strong>
+                </p>
+                <p>
+                  Category:{' '}
+                  <strong data-testid="intake-category">
+                    {CATEGORIES.find((category) => category.id === intake.categoryId)?.name ??
+                      intake.categoryName}
+                  </strong>
+                </p>
+                <p>{intake.needsApproval ? 'Needs approval.' : 'No approval step.'}</p>
+                {intake.guidance ? <p data-testid="intake-guidance">{intake.guidance}</p> : null}
+                <button type="button" onClick={useSuggestion} disabled={busy}>
+                  Use this suggestion
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
+      </section>
 
       <section className="grid">
         <form className="card" onSubmit={submitRequest}>
