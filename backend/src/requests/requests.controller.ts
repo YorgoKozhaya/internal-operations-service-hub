@@ -61,6 +61,15 @@ export class RequestsController {
     return this.requestsService.addComment(id, userId, message);
   }
 
+  @Patch(':id/department')
+  transfer(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId: string,
+    @Body('departmentId') departmentId: string,
+  ): Promise<RequestRecord> {
+    return this.requestsService.transfer(id, userId, departmentId);
+  }
+
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,

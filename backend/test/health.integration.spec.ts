@@ -29,6 +29,13 @@ describe('health and monitor', () => {
     await app.close();
   });
 
+  it('answers live as soon as the process is up', async () => {
+    const response = await request(app.getHttpServer()).get('/live');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toBe('live\n');
+  });
+
   it('checks the backend and the AI together, one bullet each', async () => {
     const response = await request(app.getHttpServer()).get('/health');
 

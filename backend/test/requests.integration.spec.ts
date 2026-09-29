@@ -47,4 +47,47 @@ describe('backend and database integration', () => {
     expect(saved?.status).toBe('Submitted');
     expect(saved?.userId).toBe('EMP-1');
   });
+
+  it('lets the owning department employee transfer a request to another department', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/requests/REQ-1001/department')
+      .set('x-user-id', 'DEPT-IT-1')
+      .send({ departmentId: 'HR' })
+      .expect(200);
+
+    expect(response.body.departmentId).toBe('HR');
+    expect(response.body.categoryId).toBe('CAT-HR-OTHER');
+    expect(response.body.status).toBe('Submitted');
+    expect(response.body.comments.some((comment: { message: string }) => comment.message.includes('Transferred from IT to HR'))).toBe(true);
+
+    await request(app.getHttpServer())
+      .get('/requests/REQ-1001')
+      .set('x-user-id', 'DEPT-HR-1')
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get('/requests/REQ-1001')
+      .set('x-user-id', 'DEPT-IT-1')
+      .expect(403);
+  });
+
+  it('rejects a transfer from the requester or from another department', async () => {
+    await request(app.getHttpServer())
+      .patch('/requests/REQ-1001/department')
+      .set('x-user-id', 'EMP-1')
+      .send({ departmentId: 'HR' })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .patch('/requests/REQ-1001/department')
+      .set('x-user-id', 'DEPT-HR-1')
+      .send({ departmentId: 'FINANCE' })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .patch('/requests/REQ-1003/department')
+      .set('x-user-id', 'DEPT-FIN-1')
+      .send({ departmentId: 'IT' })
+      .expect(400);
+  });
 });

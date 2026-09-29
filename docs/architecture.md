@@ -35,6 +35,8 @@ Since this is an internal company system, the core system does not depend on a t
 
 Week 4 also uses an AI service on the internet as an external dependency. The employee types what they need in their own words. That service suggests a category, or the status of a request they are allowed to see. The backend checks the suggestion before the screen shows it.
 
+Week 5 runs that same system without this laptop. One service serves the page and the API. The AI process runs on that same machine. The laptop database is SQLite. The live database is Postgres, because the free host does not keep a file on disk.
+
 ## 2. Structure and Flow
 
 The system is divided into a few main parts.
@@ -44,10 +46,10 @@ The system is divided into a few main parts.
 * Frontend / User Interface: where users interact with the system.
 * Internal API: allows the frontend to communicate with the backend.
 * Backend: handles the main logic of the system.
-* Request Management: handles creating, assigning, updating, and resolving requests.
-* Approval Management: handles requests that need approval.
-* Authentication and Authorization: checks who the user is and what they are allowed to do.
-* Notification Component: handles notifications when a request is updated.
+* Request Management: handles creating, assigning, updating, transferring, and resolving requests.
+* Approval Management: handles requests that need approval. The department employee decides that when the request is In Progress.
+* Authentication and Authorization: checks who the user is and what they are allowed to do. In this release the person is chosen with Acting as.
+* Notification Component: handles in-app notices when a request is updated. Email is optional.
 * Cache: keeps frequently used data temporarily so the system does not always need to query the database.
 * Database: stores users, requests, statuses, approvals, and request history.
 * External Email Service: can be used to send email notifications if needed.
@@ -95,7 +97,7 @@ The system should make sure that every user only has access to the things they a
 - Employees should only see requests related to them.
 - Department employees should only see requests related to their department.
 - Approvers should only approve requests they are responsible for.
-- Administrators can have more access because they manage the system.
+- Administrators can see every request's status, department, and requester, and they manage users, departments, and categories. They do not see the title, the description, the category, or the comments, and they do not change the status.
 
 The system should check the user's permissions before allowing important actions such as viewing, updating, approving, or managing requests.
 
@@ -104,7 +106,7 @@ The system should check the user's permissions before allowing important actions
 
 - If a request cannot be saved, the user should see a message that the submission failed.
 - If the email notification provider is not working, the request should still be processed normally.
-- If the AI service is not working, Suggest cannot finish, but the employee can still submit a request and update a status by hand.
+- If the AI service is not working, Suggest cannot finish, but the employee can still submit a request and update a status by hand. The live host checks `/live`, which stays up in that case, so the whole service is not restarted. `/health` reports the AI as down until the process is started again.
 - If the needed data is not found in the cache, the system should get it from the database.
 - If the cache is unavailable, the system should still be able to use the database.
 - If a user tries to do something they are not allowed to do, the system should deny the action.
@@ -149,7 +151,10 @@ The system should check the user's permissions before allowing important actions
   Requests, statuses, approvals, and history need to be saved so they are not lost.
 
 - Use caching when useful:  
-  This helps reduce repeated database queries and can make the system faster.
+  This helps reduce repeated database queries and can make the system faster. The current release does not use a cache. The database is read directly.
+
+- Store the live requests in Postgres:  
+  The laptop keeps SQLite for local work. The free live host has no disk that survives a restart, so the released service uses Postgres. A restart does not seed again once users exist, so stored requests stay.
 
 - Keep email notifications optional:
   The main system should still work even if the external email service is unavailable.

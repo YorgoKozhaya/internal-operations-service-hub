@@ -10,8 +10,10 @@ loadEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const origin = process.env.CORS_ORIGIN?.trim() || 'http://localhost:5173';
-  app.enableCors({ origin });
+  const configuredOrigin = process.env.CORS_ORIGIN?.trim();
+  app.enableCors({
+    origin: configuredOrigin || [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/],
+  });
 
   const frontendDist = process.env.FRONTEND_DIST?.trim()
     || join(__dirname, '..', '..', 'frontend', 'dist');

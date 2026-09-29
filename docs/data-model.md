@@ -10,6 +10,8 @@
 - Request Category
 - Approval
 - Request History
+- Comment
+- Notification
 
 ### Relationships
 
@@ -18,6 +20,8 @@
 - A request belongs to a category.
 - A request can have approval records.
 - A request can have history records.
+- A request can have comments.
+- A user can receive notices about a request.
 
 ### Cardinality
 
@@ -29,6 +33,8 @@
 - One request can have zero or more approval records, and each approval belongs to one request.
 - One user can give many approvals, and each approval is made by one user.
 - One request can have many history records, and each history record belongs to one request.
+- One request can have many comments, and each comment belongs to one request and one user.
+- One user can receive many notices, and each notice belongs to one user and one request.
 
 The figure below, drawn using Excalidraw, explains the relationships and cardinality between the entities with the attributes of each entity.
 
@@ -70,13 +76,15 @@ A request should:
 - Only have one current status at a time
 - Important changes to the request should be kept in the request history.
 
+A department employee of the current department can transfer the request to another department while it is Submitted, Assigned, or In Progress. The status stays the same. The category becomes that department's Other category. A comment records the move. A closed request cannot be transferred, and a closed request cannot be reopened.
+
 ### Sensitive and Authorization Rules
 
 - Employees should only see requests related to them.
 - Same for Department employees, they should only see and manage requests related to their department.
 - Approvers should only approve or reject requests assigned to them.
 - Only authorized users should be able to change the status of a request.
-- Administrators can have the bigger access for them to manage the system.
+- Administrators can have the bigger access for them to manage the system. They can see every request's status, department, and requester. They do not see the title, the description, the category, or the comments, and they do not change the status.
 - Sensitive request information should not be visible to users who are not involved in the request.
 
 ## 3. Storage
@@ -100,6 +108,8 @@ The following data should be stored permanently:
 - Requests
 - Approval Decisions
 - Request History
+- Comments
+- Notices
 
 ### Derived Data
 
@@ -132,6 +142,7 @@ An employee should be able to view
 - their own requests
 - a specific request and its current status
 - the history of their request
+- their own notices
 
 
 ### Department Employee
@@ -142,6 +153,8 @@ A department employee should be able to:
 - Filter requests by status.
 - Open a request and view its details.
 - Update requests they are responsible for.
+- Transfer a request to another department while it is Submitted, Assigned, or In Progress.
+- Read their own notices.
 
 
 ### Approver
@@ -151,6 +164,7 @@ An approver should be able to:
 - View requests waiting for their approval.
 - View the information needed to make a decision.
 - Approve or reject a request.
+- Read their own notices.
 
 
 ### Administrator
@@ -160,7 +174,7 @@ An administrator may need to view:
 - users
 - departments
 - request categories
-- requests across the system
+- requests across the system, without the title, description, category, or comments
 
 
 ### Important Query Patterns

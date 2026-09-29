@@ -50,6 +50,14 @@ The idea of this system is to have one place where employees can submit their re
 - Approvers can approve or reject requests.
 - Administrators can manage users, departments, and request categories.
 - The system keeps a history of important changes made to a request.
+- An employee can describe a need in their own words and get a suggestion. The suggestion is saved only when the employee submits it.
+- The department that receives the request is the department of the chosen category. A department employee can transfer it to another department while it is Submitted, Assigned, or In Progress.
+- Any department employee of that department can update the request. It is not assigned to one person.
+- The department employee decides whether an in-progress request needs approval.
+- A closed request cannot be reopened.
+- Users get an in-app notice when a request they are involved in changes.
+- An employee can ask for status updates by email. If email is unavailable, the status change is still saved.
+- An administrator can see request status across the system without seeing the request text.
 
 
 ## 5. Non-Functional Requirements
@@ -65,7 +73,7 @@ The idea of this system is to have one place where employees can submit their re
 ## 6. Assumptions
 
 - All users are employees of the company.
-- Each user has an account to access the system.
+- Each user has an account to access the system. In this release, the person picks that account with Acting as. There is no separate password.
 - Some requests may need approval while others may not.
 
 
@@ -74,19 +82,14 @@ The idea of this system is to have one place where employees can submit their re
 - The system is only for internal company use.
 - Only employees of the company can use it.
 - Week 4 also uses an AI service on the internet as an external dependency. The employee can describe what they need in their own words, and the service suggests a category or a status. The request is saved only when the employee submits it.
+- The live release runs without this laptop. Requests there are stored in Postgres. Local work stays on SQLite.
 
 
 
 
 ## 8. Unknowns
 
-- Which request types need approval?
-- Who decides which department receives a request?
-- Can a request be transferred to another department?
-- Can more than one employee work on the same request?
 - Can employees attach files to a request?
-- Can a resolved request be reopened?
-- How should users be notified about updates?
 - Should there be a deadline or expected response time for requests?
 
 

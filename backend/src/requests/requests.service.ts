@@ -471,6 +471,81 @@ export class RequestsService {
     return this.findOne(id);
   }
 
+  async transfer(id: string, actorUserId: string, nextDepartmentId: string | undefined): Promise<RequestRecord> {
+    const departmentId = nextDepartmentId?.trim() ?? '';
+
+    if (!departmentId) {
+      throw new BadRequestException('Choose the department that should handle this request.');
+    }
+
+    const request = await this.findOne(id);
+    await this.assertDepartmentStaff(actorUserId, request);
+
+    if (departmentId === request.departmentId) {
+      throw new BadRequestException('This request is already in that department.');
+    }
+
+    const movable = request.status === 'Submitted' || request.status === 'Assigned' || request.status === 'In Progress';
+
+    if (!movable) {
+      throw new BadRequestException('This request can no longer be transferred.');
+    }
+
+    const department = await this.prisma.department.findUnique({ where: { departmentId } });
+
+    if (!department) {
+      throw new BadRequestException(`Department ${departmentId} was not found.`);
+    }
+
+    const category = await this.prisma.requestCategory.findFirst({
+      where: { departmentId, name: 'Other' },
+    });
+
+    if (!category) {
+      throw new BadRequestException(`${department.name} has no Other category to receive this request.`);
+    }
+
+    const from = await this.prisma.department.findUnique({ where: { departmentId: request.departmentId } });
+    const fromName = from?.name ?? request.departmentId;
+    const createdAt = new Date().toISOString();
+
+    await this.prisma.$transaction([
+      this.prisma.request.update({
+        where: { requestId: id },
+        data: {
+          departmentId,
+          categoryId: category.categoryId,
+        },
+      }),
+      this.prisma.comment.create({
+        data: {
+          commentId: `COMMENT-${id}-${Date.now()}`,
+          requestId: id,
+          userId: actorUserId,
+          message: `Transferred from ${fromName} to ${department.name}.`,
+          createdAt,
+        },
+      }),
+    ]);
+
+    await this.notifications.notify(
+      [request.userId],
+      actorUserId,
+      id,
+      `${id} (${request.title}) was transferred to ${department.name}.`,
+    );
+
+    const staff = await this.departmentStaff(departmentId);
+    await this.notifications.notify(
+      staff,
+      actorUserId,
+      id,
+      `${id} (${request.title}) was transferred to your department.`,
+    );
+
+    return this.findOne(id);
+  }
+
   private async departmentStaff(departmentId: string): Promise<string[]> {
     const staff = await this.prisma.user.findMany({
       where: {

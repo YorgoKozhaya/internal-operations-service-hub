@@ -177,7 +177,7 @@ function listHeading(position: string | undefined): string {
 function helpSteps(position: string | undefined): Array<{ title: string; text: string }> {
   if (position === 'Department Employee') {
     return [
-      { title: 'Requests', text: 'These are the requests in your department. Open one to update the status or add a comment.' },
+      { title: 'Requests', text: 'These are the requests in your department. Open one to update the status, add a comment, or transfer it if another department should handle it.' },
       { title: 'Your own request', text: 'If you submitted it, you can read it. Another department employee updates it.' },
       { title: 'Approval', text: 'When a request is In Progress, choose whether it needs approval and who should approve it.' },
       { title: 'Notices', text: 'You are told when a new request arrives, and again after it is approved or rejected.' },
@@ -246,6 +246,7 @@ export default function App() {
   const [categoryNameInput, setCategoryNameInput] = useState('');
   const [categoryDepartmentId, setCategoryDepartmentId] = useState('IT');
   const [commentText, setCommentText] = useState('');
+  const [transferDepartmentId, setTransferDepartmentId] = useState('');
   const [intakeText, setIntakeText] = useState('');
   const [intake, setIntake] = useState<IntakeResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -269,6 +270,10 @@ export default function App() {
   const openApproval = request?.approvals.find((approval) => !approval.decision);
   const canDecide = !!openApproval && openApproval.approverId === userId && !ownsRequest;
   const staffNext = request ? (STAFF_NEXT[request.status] ?? []) : [];
+  const otherDepartments = departments.filter((department) => department.id !== request?.departmentId);
+  const canTransfer =
+    isDepartmentStaff &&
+    (request?.status === 'Submitted' || request?.status === 'Assigned' || request?.status === 'In Progress');
   const checkingApproval = isDepartmentStaff && request?.status === 'In Progress';
   const canFilterStatus =
     actor?.position === 'Department Employee' || actor?.position === 'Administrator';
@@ -604,6 +609,45 @@ export default function App() {
   async function updateStatus(event: FormEvent) {
     event.preventDefault();
     await patchStatus(nextStatus);
+  }
+
+  async function transferRequest(event: FormEvent) {
+    event.preventDefault();
+
+    if (!request) {
+      return;
+    }
+
+    const targetId = transferDepartmentId || otherDepartments[0]?.id || '';
+    const targetName = departmentName(targetId, departments);
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const response = await fetch(`${API_URL}/requests/${request.requestId}/department`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId,
+        },
+        body: JSON.stringify({ departmentId: targetId }),
+      });
+
+      if (!response.ok) {
+        setError(await readApiError(response));
+        return;
+      }
+
+      setRequest(null);
+      setNotice(`${request.requestId} was transferred to ${targetName}.`);
+      setReloadKey((key) => key + 1);
+    } catch {
+      setError('Could not reach the API.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveApprovalCheck(event: FormEvent) {
@@ -1393,6 +1437,28 @@ export default function App() {
 
           {!checkingApproval && !canDecide && !(isDepartmentStaff && staffNext.length > 0) ? (
             <p className="hint">{requestHint(request)}</p>
+          ) : null}
+
+          {canTransfer ? (
+            <form className="status-form" onSubmit={transferRequest}>
+              <label className="field">
+                Transfer to
+                <select
+                  aria-label="Transfer to"
+                  value={transferDepartmentId || otherDepartments[0]?.id || ''}
+                  onChange={(event) => setTransferDepartmentId(event.target.value)}
+                >
+                  {otherDepartments.map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" disabled={busy || otherDepartments.length === 0}>
+                Transfer request
+              </button>
+            </form>
           ) : null}
 
           {isDepartmentStaff ? (
