@@ -27,6 +27,7 @@ export class RequestLogInterceptor implements NestInterceptor {
     const path = (request.url ?? '').split('?')[0];
 
     if (
+      path === '/live' ||
       path === '/health' ||
       path === '/monitor' ||
       path === '/logs' ||

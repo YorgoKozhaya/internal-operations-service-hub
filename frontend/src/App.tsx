@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
 type CommentEntry = {
   commentId: string;
@@ -436,7 +436,7 @@ export default function App() {
 
       showRequest((await response.json()) as ServiceRequest);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -484,7 +484,7 @@ export default function App() {
 
       setIntake((await response.json()) as IntakeResult);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -536,7 +536,7 @@ export default function App() {
       setDescription('');
       setEmailUpdates(false);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -561,7 +561,7 @@ export default function App() {
 
       showRequest((await response.json()) as ServiceRequest);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -595,7 +595,7 @@ export default function App() {
 
       showRequest((await response.json()) as ServiceRequest);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -664,7 +664,7 @@ export default function App() {
       setNewName('');
       setNewEmail('');
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -696,7 +696,7 @@ export default function App() {
       setNotice('Department was added.');
       setReloadKey((key) => key + 1);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -728,7 +728,7 @@ export default function App() {
       setNotice('Department was renamed.');
       setReloadKey((key) => key + 1);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -764,7 +764,7 @@ export default function App() {
       setNotice('Category was added.');
       setReloadKey((key) => key + 1);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -796,7 +796,7 @@ export default function App() {
       setNotice('Category was renamed.');
       setReloadKey((key) => key + 1);
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }
@@ -832,7 +832,7 @@ export default function App() {
       setCommentText('');
       setNotice('Comment was added.');
     } catch {
-      setError('Could not reach the API. Start the backend on port 3000.');
+      setError('Could not reach the API.');
     } finally {
       setBusy(false);
     }

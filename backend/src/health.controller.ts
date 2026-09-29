@@ -12,6 +12,11 @@ interface TextResponse {
 export class HealthController {
   constructor(private readonly status: StatusService) {}
 
+  @Get('live')
+  live(@Res() response: TextResponse): void {
+    response.status(200).type('text/plain').send('live\n');
+  }
+
   @Get('health')
   async health(@Res() response: TextResponse): Promise<void> {
     const check = await this.status.components();
