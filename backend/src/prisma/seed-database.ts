@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 
 export async function seedDatabase(prisma: PrismaClient): Promise<void> {
+  await prisma.notification.deleteMany();
+  await prisma.comment.deleteMany();
+  await prisma.approval.deleteMany();
   await prisma.requestHistory.deleteMany();
   await prisma.request.deleteMany();
   await prisma.user.deleteMany();
@@ -17,9 +20,18 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
 
   await prisma.requestCategory.createMany({
     data: [
-      { categoryId: 'CAT-IT-1', name: 'IT Hardware' },
-      { categoryId: 'CAT-HR-1', name: 'Employment Letter' },
-      { categoryId: 'CAT-FIN-1', name: 'Work Expense' },
+      { categoryId: 'CAT-IT-1', name: 'IT Hardware', departmentId: 'IT' },
+      { categoryId: 'CAT-IT-2', name: 'Account Access', departmentId: 'IT' },
+      { categoryId: 'CAT-IT-3', name: 'Software', departmentId: 'IT' },
+      { categoryId: 'CAT-IT-OTHER', name: 'Other', departmentId: 'IT' },
+      { categoryId: 'CAT-HR-1', name: 'Employment Letter', departmentId: 'HR' },
+      { categoryId: 'CAT-HR-2', name: 'Leave', departmentId: 'HR' },
+      { categoryId: 'CAT-HR-3', name: 'Workplace Issue', departmentId: 'HR' },
+      { categoryId: 'CAT-HR-OTHER', name: 'Other', departmentId: 'HR' },
+      { categoryId: 'CAT-FIN-1', name: 'Work Expense', departmentId: 'FINANCE' },
+      { categoryId: 'CAT-FIN-2', name: 'Invoice', departmentId: 'FINANCE' },
+      { categoryId: 'CAT-FIN-3', name: 'Budget', departmentId: 'FINANCE' },
+      { categoryId: 'CAT-FIN-OTHER', name: 'Other', departmentId: 'FINANCE' },
     ],
   });
 
@@ -47,6 +59,13 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
         departmentId: 'FINANCE',
       },
       {
+        userId: 'EMP-4',
+        name: 'Yorgo Kozhaya',
+        email: 'yorgokozhaya1111@gmail.com',
+        position: 'Employee',
+        departmentId: 'IT',
+      },
+      {
         userId: 'DEPT-IT-1',
         name: 'Tarek Salameh',
         email: 'tarek.salameh@company.local',
@@ -66,6 +85,20 @@ export async function seedDatabase(prisma: PrismaClient): Promise<void> {
         email: 'fadi.chamoun@company.local',
         position: 'Department Employee',
         departmentId: 'FINANCE',
+      },
+      {
+        userId: 'APPR-IT-1',
+        name: 'Maya Haddad',
+        email: 'maya.haddad@company.local',
+        position: 'Approver',
+        departmentId: 'IT',
+      },
+      {
+        userId: 'APPR-HR-1',
+        name: 'Rami Nassar',
+        email: 'rami.nassar@company.local',
+        position: 'Approver',
+        departmentId: 'HR',
       },
       {
         userId: 'APPR-1',

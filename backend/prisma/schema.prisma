@@ -11,26 +11,32 @@ model Department {
   departmentId String @id
   name         String
 
-  users    User[]
-  requests Request[]
+  users      User[]
+  requests   Request[]
+  categories RequestCategory[]
 }
 
 model RequestCategory {
-  categoryId String @id
-  name       String
+  categoryId   String @id
+  name         String
+  departmentId String
 
-  requests Request[]
+  department Department @relation(fields: [departmentId], references: [departmentId])
+  requests   Request[]
 }
 
 model User {
   userId       String @id
   name         String
-  email        String
+  email        String @unique
   position     String
   departmentId String
 
-  department Department @relation(fields: [departmentId], references: [departmentId])
-  requests   Request[]
+  department    Department     @relation(fields: [departmentId], references: [departmentId])
+  requests      Request[]
+  approvals     Approval[]
+  notifications Notification[]
+  comments      Comment[]
 }
 
 model Request {
@@ -42,11 +48,59 @@ model Request {
   userId       String
   departmentId String
   categoryId   String
+  emailUpdates Boolean @default(false)
 
   user       User             @relation(fields: [userId], references: [userId])
   department Department       @relation(fields: [departmentId], references: [departmentId])
   category   RequestCategory  @relation(fields: [categoryId], references: [categoryId])
-  history    RequestHistory[]
+  history       RequestHistory[]
+  approvals     Approval[]
+  notifications Notification[]
+  comments      Comment[]
+
+  @@index([userId])
+  @@index([departmentId])
+  @@index([status])
+}
+
+model Approval {
+  approvalId   String  @id
+  approverId   String
+  requestId    String
+  decision     String?
+  decisionDate String?
+
+  approver User    @relation(fields: [approverId], references: [userId])
+  request  Request @relation(fields: [requestId], references: [requestId])
+
+  @@index([approverId])
+}
+
+model Notification {
+  notificationId String  @id
+  userId         String
+  requestId      String
+  message        String
+  createdAt      String
+  read           Boolean @default(false)
+
+  user    User    @relation(fields: [userId], references: [userId])
+  request Request @relation(fields: [requestId], references: [requestId])
+
+  @@index([userId])
+}
+
+model Comment {
+  commentId String @id
+  requestId String
+  userId    String
+  message   String
+  createdAt String
+
+  request Request @relation(fields: [requestId], references: [requestId])
+  user    User    @relation(fields: [userId], references: [userId])
+
+  @@index([requestId])
 }
 
 model RequestHistory {

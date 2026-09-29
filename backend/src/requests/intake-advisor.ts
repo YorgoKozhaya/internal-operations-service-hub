@@ -1,15 +1,20 @@
-import { PRODUCT_CATEGORIES } from './intake-rules';
-
 export const INTAKE_ADVISOR = Symbol('INTAKE_ADVISOR');
 
 export interface EmployeeRequestContext {
   requestId: string;
   title: string;
   status: string;
+  comments: Array<{ authorName: string; message: string }>;
+}
+
+export interface CategoryContext {
+  categoryId: string;
+  name: string;
+  departmentId: string;
 }
 
 export interface IntakeContext {
-  categories: typeof PRODUCT_CATEGORIES;
+  categories: readonly CategoryContext[];
   employeeRequests: EmployeeRequestContext[];
 }
 

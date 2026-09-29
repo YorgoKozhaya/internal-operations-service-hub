@@ -13,14 +13,15 @@ import {
   InvalidIntakeOutputError,
 } from './intake-advisor';
 import {
-  PRODUCT_CATEGORIES,
   IntakeResult,
   ParsedIntake,
   categoryById,
   asksForEveryRequest,
+  categoryMatchesMessage,
   isThinRequest,
   looksLikeStatusQuestion,
   matchingAreas,
+  normalizeDepartment,
   parseModelOutput,
 } from './intake-rules';
 
@@ -61,6 +62,7 @@ type VisibleRequest = {
   date: string;
   categoryId: string;
   history: Array<{ status: string; updatedDate: string }>;
+  comments: Array<{ authorName: string; message: string }>;
 };
 
 @Injectable()
@@ -94,15 +96,23 @@ export class IntakeService {
       return this.listEveryRequest(actor.userId, actor.position, visible);
     }
 
+    const categories = await this.prisma.requestCategory.findMany({
+      orderBy: { categoryId: 'asc' },
+    });
     let raw: unknown;
 
     try {
       raw = await this.advisor.advise(message, {
-        categories: PRODUCT_CATEGORIES,
+        categories: categories.map((category) => ({
+          categoryId: category.categoryId,
+          name: category.name,
+          departmentId: category.departmentId,
+        })),
         employeeRequests: visible.map((request) => ({
           requestId: request.requestId,
           title: request.title,
           status: request.status,
+          comments: request.comments,
         })),
       });
     } catch (error) {
@@ -134,7 +144,7 @@ export class IntakeService {
     return this.answerNewRequest(message, parsed);
   }
 
-  private answerNewRequest(message: string, parsed: ParsedIntake): IntakeResult {
+  private async answerNewRequest(message: string, parsed: ParsedIntake): Promise<IntakeResult> {
     if (isThinRequest(message)) {
       return this.clarification('Say whether this is for IT, HR, or Finance.');
     }
@@ -145,23 +155,40 @@ export class IntakeService {
       return this.clarification('This matches more than one area. Choose IT, HR, or Finance.');
     }
 
-    const category = areas.length === 1 ? categoryById(areas[0]) : categoryById(parsed.categoryId);
+    const known = categoryById(parsed.categoryId);
+    const hinted = parsed.categoryId
+      ? await this.prisma.requestCategory.findUnique({ where: { categoryId: parsed.categoryId } })
+      : null;
+    const area = areas.length === 1 ? categoryById(areas[0]) : null;
+    const departmentId =
+      area?.departmentId ?? hinted?.departmentId ?? known?.departmentId ?? normalizeDepartment(parsed.departmentId);
 
-    if (!category || (areas.length === 0 && parsed.needsClarification)) {
+    if (!departmentId || (areas.length === 0 && !hinted && !known && parsed.needsClarification && !parsed.categoryName)) {
       return this.clarification(
         parsed.clarification ?? 'This hub accepts IT, HR, and Finance requests.',
       );
     }
 
+    const stored = await this.prisma.requestCategory.findMany({
+      where: { departmentId },
+    });
+    const similar = stored.filter((category) => categoryMatchesMessage(category.categoryId, category.name, message));
+    const chosen = similar.length === 1 ? similar[0] : stored.find((category) => category.name.toLowerCase() === 'other');
+
+    if (!chosen) {
+      return this.clarification(parsed.clarification ?? 'Say whether this is for IT, HR, or Finance.');
+    }
+
     return {
       requestType: 'new_request',
-      categoryId: category.categoryId,
-      categoryName: category.name,
+      categoryId: chosen.categoryId,
+      categoryName: chosen.name,
       title: cleanTitle(parsed.title, message),
-      needsApproval: category.needsApproval,
+      needsApproval: null,
+      departmentId,
       needsClarification: false,
       clarification: null,
-      guidance: requestGuidance(category.categoryId, parsed.guidance),
+      guidance: requestGuidance(departmentId, parsed.guidance),
       requestId: null,
       status: null,
       answer: null,
@@ -174,7 +201,8 @@ export class IntakeService {
       categoryId: null,
       categoryName: null,
       title: null,
-      needsApproval: false,
+      needsApproval: null,
+      departmentId: null,
       needsClarification: true,
       clarification,
       guidance: null,
@@ -233,8 +261,12 @@ export class IntakeService {
     return this.statusList(parts.join('\n'), false);
   }
 
+  private requestLabel(request: { requestId: string; title: string }): string {
+    return request.title ? `${request.requestId} (${request.title})` : request.requestId;
+  }
+
   private requestLine(request: { requestId: string; title: string; status: string }): string {
-    return `${request.requestId} (${request.title}) is ${request.status}.`;
+    return `${this.requestLabel(request)} is ${request.status}.`;
   }
 
   private statusList(answer: string, needsClarification: boolean): IntakeResult {
@@ -243,7 +275,8 @@ export class IntakeService {
       categoryId: null,
       categoryName: null,
       title: null,
-      needsApproval: false,
+      needsApproval: null,
+      departmentId: null,
       needsClarification,
       clarification: needsClarification ? answer : null,
       guidance: null,
@@ -263,7 +296,7 @@ export class IntakeService {
     if (!match) {
       const list =
         visible.length > 0
-          ? visible.map((request) => `${request.requestId} (${request.title})`).join(', ')
+          ? visible.map((request) => this.requestLabel(request)).join(', ')
           : 'none';
 
       return {
@@ -271,7 +304,8 @@ export class IntakeService {
         categoryId: null,
         categoryName: null,
         title: null,
-        needsApproval: false,
+        needsApproval: null,
+        departmentId: null,
         needsClarification: true,
         clarification: `Say which request you mean. Requests you can see: ${list}.`,
         guidance: null,
@@ -283,19 +317,23 @@ export class IntakeService {
 
     const category = categoryById(match.categoryId);
     const history = match.history.map((entry) => entry.status).join(', ');
+    const comments = match.comments.length
+      ? ` Comments: ${match.comments.map((comment) => `${comment.authorName}: ${comment.message}`).join('; ')}.`
+      : '';
 
     return {
       requestType: 'status_question',
       categoryId: category?.categoryId ?? null,
       categoryName: category?.name ?? null,
       title: match.title,
-      needsApproval: category?.needsApproval ?? false,
+      needsApproval: null,
+      departmentId: category?.departmentId ?? null,
       needsClarification: false,
       clarification: null,
       guidance: null,
       requestId: match.requestId,
       status: match.status,
-      answer: `${match.requestId} (${match.title}) is ${match.status}. History: ${history}.`,
+      answer: `${this.requestLabel(match)} is ${match.status}. History: ${history}.${comments}`,
     };
   }
 
@@ -345,26 +383,43 @@ export class IntakeService {
     departmentId: string,
   ): Promise<VisibleRequest[]> {
     const where =
-      position === 'Department Employee' ? { departmentId } : { userId };
+      position === 'Administrator'
+        ? {}
+        : position === 'Department Employee'
+          ? { departmentId }
+          : position === 'Approver'
+            ? { OR: [{ userId }, { approvals: { some: { approverId: userId } } }] }
+            : { userId };
 
     const requests = await this.prisma.request.findMany({
       where,
-      include: { history: { orderBy: { updatedDate: 'asc' } } },
+      include: {
+        history: { orderBy: { updatedDate: 'asc' } },
+        comments: { orderBy: { createdAt: 'asc' }, include: { user: true } },
+      },
       orderBy: { requestId: 'asc' },
     });
+
+    const hideContent = position === 'Administrator';
 
     return requests.map((request) => ({
       requestId: request.requestId,
       userId: request.userId,
-      title: request.title,
-      description: request.description,
+      title: hideContent ? '' : request.title,
+      description: hideContent ? '' : request.description,
       status: request.status,
       date: request.date,
-      categoryId: request.categoryId,
+      categoryId: hideContent ? '' : request.categoryId,
       history: request.history.map((entry) => ({
         status: entry.status,
         updatedDate: entry.updatedDate,
       })),
+      comments: hideContent
+        ? []
+        : request.comments.map((comment) => ({
+            authorName: comment.user.name,
+            message: comment.message,
+          })),
     }));
   }
 
@@ -402,23 +457,29 @@ export class IntakeService {
       );
     }
 
+    if (error instanceof IntakeProviderError && error.message.includes('not running')) {
+      throw new ServiceUnavailableException(
+        'The AI assistant is not available. You can still submit a request by yourself.',
+      );
+    }
+
     throw new ServiceUnavailableException(
       'The AI provider could not complete intake. No request was created.',
     );
   }
 }
 
-function requestGuidance(categoryId: string, modelGuidance: string | null): string {
+function requestGuidance(departmentId: string, modelGuidance: string | null): string {
   if (modelGuidance && /fill a request stating/i.test(modelGuidance)) {
     return modelGuidance.slice(0, 240);
   }
 
-  if (categoryId === 'CAT-HR-1') {
+  if (departmentId === 'HR') {
     return 'Fill a request stating what happened and what you want HR to do.';
   }
 
-  if (categoryId === 'CAT-FIN-1') {
-    return 'Fill a request stating the expense and why it should be reimbursed.';
+  if (departmentId === 'FINANCE') {
+    return 'Fill a request stating the amount and why Finance should handle it.';
   }
 
   return 'Fill a request stating what is not working and what you need IT to fix.';

@@ -55,18 +55,18 @@ describe('AI request intake', () => {
 
     expect(response.body.requestType).toBe('new_request');
     expect(response.body.categoryId).toBe('CAT-IT-1');
-    expect(response.body.needsApproval).toBe(false);
+    expect(response.body.needsApproval).toBeNull();
+    expect(response.body.departmentId).toBe('IT');
     expect(response.body.needsClarification).toBe(false);
     expect(await prisma.request.count()).toBe(before);
   });
 
-  it('sets approval from the work-expense rule', async () => {
+  it('leaves the approval check to the responsible department', async () => {
     jest.mocked(advisor.advise).mockResolvedValue({
       requestType: 'new_request',
       categoryId: 'CAT-FIN-1',
       title: 'Hotel invoice from the Byblos trip',
       needsClarification: false,
-      needsApproval: false,
       clarification: null,
       requestId: null,
     });
@@ -77,8 +77,10 @@ describe('AI request intake', () => {
       .send({ text: 'I paid the hotel invoice from the Byblos trip and need the money back.' })
       .expect(200);
 
-    expect(response.body.categoryId).toBe('CAT-FIN-1');
-    expect(response.body.needsApproval).toBe(true);
+    expect(response.body.categoryId).toBe('CAT-FIN-2');
+    expect(response.body.categoryName).toBe('Invoice');
+    expect(response.body.needsApproval).toBeNull();
+    expect(response.body.departmentId).toBe('FINANCE');
   });
 
   it('classifies a workplace message that names HR as HR', async () => {
@@ -97,9 +99,37 @@ describe('AI request intake', () => {
       .send({ text: 'my manager is behaving bad with me and need to talk to the hr' })
       .expect(200);
 
-    expect(response.body.categoryId).toBe('CAT-HR-1');
+    expect(response.body.categoryId).toBe('CAT-HR-3');
+    expect(response.body.categoryName).toBe('Workplace Issue');
     expect(response.body.needsClarification).toBe(false);
-    expect(response.body.needsApproval).toBe(false);
+    expect(response.body.needsApproval).toBeNull();
+    expect(response.body.departmentId).toBe('HR');
+  });
+
+  it('uses Other when the request is not one of the existing types', async () => {
+    jest.mocked(advisor.advise).mockResolvedValue({
+      requestType: 'new_request',
+      categoryId: 'CAT-HR-1',
+      title: 'Salary raise',
+      needsClarification: false,
+      clarification: null,
+      requestId: null,
+    });
+
+    const before = await prisma.requestCategory.count();
+
+    const response = await request(app.getHttpServer())
+      .post('/requests/intake')
+      .set('x-user-id', 'EMP-1')
+      .send({ text: 'I need a salary raise.' })
+      .expect(200);
+
+    expect(response.body.categoryId).toBe('CAT-HR-OTHER');
+    expect(response.body.categoryName).toBe('Other');
+    expect(response.body.departmentId).toBe('HR');
+    expect(response.body.needsClarification).toBe(false);
+    expect(await prisma.requestCategory.count()).toBe(before);
+    expect(await prisma.request.count()).toBe(3);
   });
 
   it('asks for clarification when the text matches no category', async () => {
@@ -219,6 +249,46 @@ describe('AI request intake', () => {
     expect(response.body.requestId).toBe('REQ-1001');
     expect(response.body.status).toBe('Submitted');
     expect(response.body.answer).toContain('Submitted');
+  });
+
+  it('gives the assistant the comments saved on a request', async () => {
+    await prisma.comment.create({
+      data: {
+        commentId: 'COMMENT-REQ-1001-TEST',
+        requestId: 'REQ-1001',
+        userId: 'DEPT-IT-1',
+        message: 'A replacement keyboard is on the way.',
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    jest.mocked(advisor.advise).mockResolvedValue({
+      requestType: 'status_question',
+      categoryId: null,
+      title: null,
+      needsClarification: false,
+      clarification: null,
+      requestId: 'REQ-1001',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/requests/intake')
+      .set('x-user-id', 'EMP-1')
+      .send({ text: 'What happened to my laptop keyboard request?' })
+      .expect(200);
+
+    expect(response.body.answer).toContain('Tarek Salameh: A replacement keyboard is on the way.');
+    expect(advisor.advise).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        employeeRequests: expect.arrayContaining([
+          expect.objectContaining({
+            requestId: 'REQ-1001',
+            comments: [{ authorName: 'Tarek Salameh', message: 'A replacement keyboard is on the way.' }],
+          }),
+        ]),
+      }),
+    );
   });
 
   it('refuses a status question about another employee request', async () => {

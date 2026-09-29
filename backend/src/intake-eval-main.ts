@@ -12,7 +12,8 @@ process.env.DATABASE_URL = `file:${join(__dirname, '..', 'prisma', 'test.db').re
 type IntakeBody = {
   requestType?: string;
   categoryId?: string | null;
-  needsApproval?: boolean;
+  needsApproval?: boolean | null;
+  departmentId?: string | null;
   needsClarification?: boolean;
   guidance?: string | null;
   requestId?: string | null;
@@ -50,7 +51,8 @@ async function main(): Promise<void> {
       status === 200 &&
       body.requestType === 'new_request' &&
       body.categoryId === 'CAT-IT-1' &&
-      body.needsApproval === false &&
+      body.needsApproval == null &&
+      body.departmentId === 'IT' &&
       body.needsClarification === false,
     ),
   );
@@ -63,8 +65,9 @@ async function main(): Promise<void> {
       (status, body) =>
         status === 200 &&
         body.requestType === 'new_request' &&
-        body.categoryId === 'CAT-FIN-1' &&
-        body.needsApproval === true &&
+        body.categoryId === 'CAT-FIN-2' &&
+        body.needsApproval == null &&
+        body.departmentId === 'FINANCE' &&
         body.needsClarification === false,
     ),
   );
@@ -77,8 +80,9 @@ async function main(): Promise<void> {
       (status, body) =>
         status === 200 &&
         body.requestType === 'new_request' &&
-        body.categoryId === 'CAT-HR-1' &&
-        body.needsApproval === false &&
+        body.categoryId === 'CAT-HR-3' &&
+        body.needsApproval == null &&
+        body.departmentId === 'HR' &&
         body.needsClarification === false &&
         typeof body.guidance === 'string' &&
         /fill a request stating/i.test(body.guidance),
@@ -93,9 +97,10 @@ async function main(): Promise<void> {
       (status, body) =>
         status === 200 &&
         body.requestType === 'new_request' &&
-        body.categoryId === 'CAT-HR-1' &&
+        body.categoryId === 'CAT-HR-3' &&
         body.needsClarification === false &&
-        body.needsApproval === false,
+        body.needsApproval == null &&
+        body.departmentId === 'HR',
     ),
   );
   checks.push(
